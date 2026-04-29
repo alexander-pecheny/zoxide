@@ -118,19 +118,17 @@ impl Database {
         self.with_dirty_mut(|dirty| *dirty = true);
     }
 
-    pub fn age(&mut self, max_age: Rank) {
+    pub fn prune(&mut self, max_dirs: usize) {
         let mut dirty = false;
         self.with_dirs_mut(|dirs| {
-            let total_age = dirs.iter().map(|dir| dir.rank).sum::<Rank>();
-            if total_age > max_age {
-                let factor = 0.9 * max_age / total_age;
-                for idx in (0..dirs.len()).rev() {
-                    let dir = &mut dirs[idx];
-                    dir.rank *= factor;
-                    if dir.rank < 1.0 {
-                        dirs.swap_remove(idx);
-                    }
-                }
+            if dirs.len() > max_dirs {
+                dirs.sort_unstable_by(|dir1, dir2| {
+                    dir2.rank
+                        .total_cmp(&dir1.rank)
+                        .then_with(|| dir2.last_accessed.cmp(&dir1.last_accessed))
+                        .then_with(|| dir1.path.cmp(&dir2.path))
+                });
+                dirs.truncate(max_dirs);
                 dirty = true;
             }
         });
@@ -284,5 +282,26 @@ mod tests {
             assert!(!db.remove(path));
             db.save().unwrap();
         }
+    }
+
+    #[test]
+    fn prune_limits_entry_count() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let now = 946684800;
+
+        let mut db = Database::open_dir(data_dir.path()).unwrap();
+        db.add_unchecked("/hot", 20_000.0, now);
+        db.add_unchecked("/warm", 2.0, now);
+        db.add_unchecked("/cold", 1.0, now);
+
+        db.prune(3);
+        assert_eq!(db.dirs().len(), 3);
+        assert!(db.dirs().iter().any(|dir| dir.path == "/cold"));
+
+        db.prune(2);
+        assert_eq!(db.dirs().len(), 2);
+        assert!(db.dirs().iter().any(|dir| dir.path == "/hot"));
+        assert!(db.dirs().iter().any(|dir| dir.path == "/warm"));
+        assert!(!db.dirs().iter().any(|dir| dir.path == "/cold"));
     }
 }

@@ -5,8 +5,6 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, ensure};
 use glob::Pattern;
 
-use crate::db::Rank;
-
 pub fn data_dir() -> Result<PathBuf> {
     let dir = match env::var_os("_ZO_DATA_DIR") {
         Some(path) => PathBuf::from(path),
@@ -47,13 +45,13 @@ pub fn fzf_opts() -> Option<OsString> {
     env::var_os("_ZO_FZF_OPTS")
 }
 
-pub fn maxage() -> Result<Rank> {
-    env::var_os("_ZO_MAXAGE").map_or(Ok(10_000.0), |maxage| {
-        let maxage = maxage.to_str().context("invalid unicode in _ZO_MAXAGE")?;
-        let maxage = maxage
+pub fn maxdirs() -> Result<usize> {
+    env::var_os("_ZO_MAXDIRS").map_or(Ok(10_000), |maxdirs| {
+        let maxdirs = maxdirs.to_str().context("invalid unicode in _ZO_MAXDIRS")?;
+        maxdirs
             .parse::<u32>()
-            .with_context(|| format!("unable to parse _ZO_MAXAGE as integer: {maxage}"))?;
-        Ok(maxage as Rank)
+            .map(|value| value as usize)
+            .with_context(|| format!("unable to parse _ZO_MAXDIRS as integer: {maxdirs}"))
     })
 }
 

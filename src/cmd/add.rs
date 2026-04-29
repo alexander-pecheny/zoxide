@@ -13,7 +13,7 @@ impl Run for Add {
         const EXCLUDE_CHARS: &[char] = &['\n', '\r'];
 
         let exclude_dirs = config::exclude_dirs()?;
-        let max_age = config::maxage()?;
+        let max_dirs = config::maxdirs()?;
         let now = util::current_time()?;
 
         let mut db = Database::open()?;
@@ -39,7 +39,7 @@ impl Run for Add {
         }
 
         if db.dirty() {
-            db.age(max_age);
+            db.prune(max_dirs);
         }
         db.save()
     }

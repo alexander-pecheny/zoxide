@@ -7,6 +7,9 @@
   "MD041": false
 } -->
 
+> Personal fork: `_ZO_MAXDIRS` limits the number of stored directories instead
+> of pruning by total rank.
+
 <div align="center">
 
 <sup>Special thanks to:</sup>
